@@ -1,0 +1,33 @@
+{
+  "identifier": "default",
+  "description": "Default permissions for Boxy",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "fs:default",
+    "fs:allow-read-file",
+    "fs:scope-home",
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [
+        { "path": "C:\\Users\\akrec\\Videos\\**" },
+        { "path": "$APPDATA/com.bushido.boxy/**" }
+      ]
+    },
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "core:window:default",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-maximized",
+    "core:window:allow-is-fullscreen",
+    "updater:default",
+    "process:allow-restart"
+  ]
+}

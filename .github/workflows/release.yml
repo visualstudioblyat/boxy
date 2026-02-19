@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Build Tauri
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Boxy ${{ github.ref_name }}"
+          body: "See the assets for download. Install the .msi or .exe setup."
+          files: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/nsis/*.sig
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/msi/*.sig
+            src-tauri/target/release/bundle/msi/*.zip
+            src-tauri/target/release/bundle/msi/*.zip.sig
+            src-tauri/target/release/bundle/nsis/*.zip
+            src-tauri/target/release/bundle/nsis/*.zip.sig
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate updater JSON
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          MSI_SIG=$(cat src-tauri/target/release/bundle/msi/Boxy_${VERSION}_x64_en-US.msi.zip.sig)
+          NSIS_SIG=$(cat src-tauri/target/release/bundle/nsis/Boxy_${VERSION}_x64-setup.nsis.zip.sig)
+          cat > latest.json << ENDJSON
+          {
+            "version": "${VERSION}",
+            "notes": "Boxy ${GITHUB_REF_NAME}",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "${NSIS_SIG}",
+                "url": "https://github.com/visualstudioblyat/boxy/releases/download/${GITHUB_REF_NAME}/Boxy_${VERSION}_x64-setup.nsis.zip"
+              }
+            }
+          }
+          ENDJSON
+
+      - name: Upload updater JSON
+        uses: softprops/action-gh-release@v2
+        with:
+          files: latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
